@@ -564,9 +564,9 @@ class ImageTextAdder:
             image_path = image_files[i]
             text_content = paragraphs[i]
             
-            # 生成输出文件名
+            # 生成输出文件名，添加数字前缀
             image_name = os.path.splitext(os.path.basename(image_path))[0]
-            output_path = os.path.join(output_folder, f"{image_name}_text.jpg")
+            output_path = os.path.join(output_folder, f"{i+1}-{image_name}_text.jpg")
             
             print(f"\n📝 处理第 {i+1} 张图片: {os.path.basename(image_path)}")
             print(f"   文本内容: {text_content[:30]}..." if len(text_content) > 30 else f"   文本内容: {text_content}")
@@ -673,9 +673,10 @@ class ImageTextAdder:
             image_path = selected_images[i]
             text_content = paragraphs[i]
             
-            # 生成输出文件名
+
+            # 生成输出文件名，添加数字前缀
             image_name = os.path.splitext(os.path.basename(image_path))[0]
-            output_path = os.path.join(output_folder, f"{image_name}_text.jpg")
+            output_path = os.path.join(output_folder, f"{i+1}-{image_name}_text.jpg")
             
             print(f"\n📝 处理第 {i+1} 张图片: {os.path.basename(image_path)}")
             print(f"   文本内容: {text_content[:30]}..." if len(text_content) > 30 else f"   文本内容: {text_content}")
@@ -733,7 +734,8 @@ def main():
     
     # 自动处理参数
     parser.add_argument("--auto", help="自动处理模式，从指定文件夹的0.txt读取段落，随机选择10张图片")
-    parser.add_argument("--img-source", default="D:\\cursor\\imgaddtext\\xiaoshani\\img", help="图片源文件夹路径（自动处理时使用）")
+
+    parser.add_argument("--img-source", default="./xiaoshani/img", help="图片源文件夹路径（自动处理时使用）")
     
     args = parser.parse_args()
     
