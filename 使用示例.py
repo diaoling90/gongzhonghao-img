@@ -196,4 +196,18 @@ if __name__ == "__main__":
 
 
 
-#  python imgaddtext.py --batch --folder ./20250913 --text-file ./20250913/1.txt -f bbhbold -s 120 -c black -p center
+#  python imgaddtext.py --batch --folder ./20250913 --text-file ./20250913/1.txt -f bbhbold -s 180 -c black -p center
+
+# python imgaddtext.py 1.jpg -t "垂直居中/n水平居中/n完全居中" -p "100,vcenter"  -f bbhbold -s 180 -c black
+
+
+
+
+#  python imgaddtext.py --batch --folder ./xiaoshani/20250917-1 --text-file ./xiaoshani/20250917-1/0.txt -f bbhbold -s 180 -c black
+
+# python imgaddtext.py --auto ./xiaoshani/20250918 -f bbhbold -s 180 -c black 
+
+# python phone_manager.py transfer ./xiaoshani/20250917-1/output/
+
+
+# python phone_manager.py delete ./xiaoshani/20250915/output/

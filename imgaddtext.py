@@ -16,6 +16,7 @@ import argparse
 from pathlib import Path
 import glob
 import re
+import random
 
 class ImageTextAdder:
     def __init__(self):
@@ -154,7 +155,63 @@ class ImageTextAdder:
             except:
                 return ImageFont.load_default()
     
-    def parse_position(self, position_input, image_size, text_size):
+    def parse_position_and_size_from_filename(self, image_path):
+        """从图片文件名解析位置和字体大小信息"""
+        try:
+            # 获取文件名（不含扩展名）
+            filename = os.path.splitext(os.path.basename(image_path))[0]
+            
+            # 用 - 分割文件名
+            parts = filename.split('-')
+            
+            # 检查是否有至少两部分
+            if len(parts) < 2:
+                return None, None
+            
+            # 第二部分应该包含位置信息
+            position_part = parts[1]
+            
+            # 第三部分可能包含字体大小信息
+            font_size = None
+            if len(parts) >= 3:
+                try:
+                    font_size = int(parts[2].strip())
+                except ValueError:
+                    pass
+            
+            # 用 x 分割坐标
+            if 'x' in position_part:
+                coords = position_part.split('x')
+                if len(coords) == 2:
+                    x_part = coords[0].strip()
+                    y_part = coords[1].strip()
+                    
+                    # 处理x坐标
+                    try:
+                        if x_part.lower() == 'center':
+                            x = 'center'
+                        else:
+                            x = int(x_part)
+                    except ValueError:
+                        x = x_part  # 保留原始字符串，如 'vcenter'
+                    
+                    # 处理y坐标
+                    try:
+                        if y_part.lower() in ['center', 'vcenter']:
+                            y = y_part.lower()
+                        else:
+                            y = int(y_part)
+                    except ValueError:
+                        y = y_part  # 保留原始字符串
+                    
+                    return (x, y), font_size
+            
+            return None, None
+            
+        except Exception:
+            return None, None
+    
+    def parse_position(self, position_input, image_size, text_size, image_path=None):
         """解析位置输入，支持多种格式"""
         img_width, img_height = image_size
         text_width, text_height = text_size
@@ -162,17 +219,17 @@ class ImageTextAdder:
         if isinstance(position_input, str):
             position = position_input.lower()
             
-            # 预定义位置
+            # 预定义位置 - 所有位置都是文字区域top的坐标
             positions = {
-                'top-left': (10, 10),
-                'top-center': ((img_width - text_width) // 2, 10),
-                'top-right': (img_width - text_width - 10, 10),
-                'center-left': (10, (img_height - text_height) // 2),
-                'center': ((img_width - text_width) // 2, (img_height - text_height) // 2),
-                'center-right': (img_width - text_width - 10, (img_height - text_height) // 2),
-                'bottom-left': (10, img_height - text_height - 10),
-                'bottom-center': ((img_width - text_width) // 2, img_height - text_height - 10),
-                'bottom-right': (img_width - text_width - 10, img_height - text_height - 10),
+                'top-left': (10, 10),  # 文字区域top距离顶部10像素
+                'top-center': ((img_width - text_width) // 2, 10),  # 水平居中，top距离顶部10像素
+                'top-right': (img_width - text_width - 10, 10),  # 右上角，top距离顶部10像素
+                'center-left': (10, (img_height - text_height) // 2),  # 垂直居中，左对齐
+                'center': ((img_width - text_width) // 2, (img_height - text_height) // 2),  # 完全居中
+                'center-right': (img_width - text_width - 10, (img_height - text_height) // 2),  # 垂直居中，右对齐
+                'bottom-left': (10, img_height - text_height - 10),  # 左下角
+                'bottom-center': ((img_width - text_width) // 2, img_height - text_height - 10),  # 底部居中
+                'bottom-right': (img_width - text_width - 10, img_height - text_height - 10),  # 右下角
                 'vcenter': ((img_width - text_width) // 2, (img_height - text_height) // 2)  # 垂直居中，水平居中
             }
             
@@ -195,10 +252,14 @@ class ImageTextAdder:
                         
                         # 处理y坐标
                         if y_pos.lower() == 'vcenter':
+                            # vcenter: 整个文字区域在图片垂直中心
+                            # 计算文字区域top位置 = (图片高度 - 文字高度) / 2
                             y = (img_height - text_height) // 2
                         elif y_pos.lower() == 'center':
+                            # center: 整个文字区域在图片垂直中心
                             y = (img_height - text_height) // 2
                         else:
+                            # 具体数字: 文字区域top距离图片顶部的距离
                             y = int(y_pos)
                         
                         return (x, y)
@@ -214,7 +275,7 @@ class ImageTextAdder:
     
     def add_text_to_image(self, image_path, text, output_path=None, 
                          font_name="arial", font_size=40, 
-                         color="black", position="top-left", 
+                         color="black", position=None, 
                          outline_color=None, outline_width=0):
         """
         给图片添加文字
@@ -232,6 +293,24 @@ class ImageTextAdder:
         """
         
         try:
+            # 尝试从文件名解析位置和字体大小
+            parsed_position, parsed_font_size = self.parse_position_and_size_from_filename(image_path)
+            
+            # 处理位置解析
+            if position is None:
+                if parsed_position:
+                    x_part, y_part = parsed_position
+                    position = f"{x_part},{y_part}"
+                    print(f"📋 从文件名解析位置: {position}")
+                else:
+                    position = "top-left"
+                    print(f"📋 使用默认位置: {position}")
+            
+            # 处理字体大小解析
+            if parsed_font_size is not None:
+                font_size = parsed_font_size
+                print(f"📋 从文件名解析字体大小: {font_size}")
+            
             # 打开图片
             image = Image.open(image_path)
             if image.mode != 'RGBA':
@@ -266,9 +345,9 @@ class ImageTextAdder:
             text_height = len([line for line in lines if line.strip()]) * line_height
             
             # 解析位置
-            pos = self.parse_position(position, image.size, (text_width, text_height))
+            pos = self.parse_position(position, image.size, (text_width, text_height), image_path)
             
-            # 按照正确思路计算垂直居中：
+            # 按照正确思路计算多行文字位置：
             # 1. 先算行数
             non_empty_lines = [line for line in lines if line.strip()]
             line_count = len(non_empty_lines)
@@ -276,10 +355,9 @@ class ImageTextAdder:
             # 2. 根据字体大小算整个文字区域的高度
             total_height = line_count * line_height
             
-            # 3. 跟图片高度计算出起始位置
-            # 图片垂直中心 - 文字区域高度的一半 = 起始位置
-            img_center_y = image.size[1] // 2
-            start_y = img_center_y - total_height // 2
+            # 3. 基于解析出的位置计算起始位置
+            # pos[1] 是解析出的Y坐标，这应该是文字区域top距离图片顶部的距离
+            start_y = pos[1]
             
             # 绘制描边（如果有）- 支持多行文字
             if outline_color_parsed and outline_width > 0:
@@ -419,8 +497,23 @@ class ImageTextAdder:
             if '_text' not in filename and '_with_text' not in filename:
                 original_files.append(file_path)
         
-        # 按文件名排序
-        original_files.sort()
+        # 按文件名第一个数值排序
+        def get_sort_key(filepath):
+            filename = os.path.basename(filepath)
+            # 用-分割，取第一部分
+            first_part = filename.split('-')[0]
+            try:
+                # 尝试提取数字
+                import re
+                numbers = re.findall(r'\d+', first_part)
+                if numbers:
+                    return int(numbers[0])
+                else:
+                    return 0
+            except:
+                return 0
+        
+        original_files.sort(key=get_sort_key)
         print(f"🖼️  在 {folder_path} 中找到 {len(original_files)} 张原始图片")
         return original_files
     
@@ -478,7 +571,7 @@ class ImageTextAdder:
             print(f"\n📝 处理第 {i+1} 张图片: {os.path.basename(image_path)}")
             print(f"   文本内容: {text_content[:30]}..." if len(text_content) > 30 else f"   文本内容: {text_content}")
             
-            # 添加文字到图片
+            # 添加文字到图片（不传递position和font_size，让方法内部解析）
             result = self.add_text_to_image(
                 image_path=image_path,
                 text=text_content,
@@ -486,7 +579,7 @@ class ImageTextAdder:
                 font_name=font_name,
                 font_size=font_size,
                 color=color,
-                position=position,
+                position=None,  # 让方法内部从文件名解析
                 outline_color=outline_color,
                 outline_width=outline_width
             )
@@ -507,6 +600,115 @@ class ImageTextAdder:
             print(f"⚠️  还有 {len(image_files) - len(paragraphs)} 张图片没有使用")
         
         return processed_count
+    
+    def auto_process_images(self, folder_path, img_source_folder="D:\\cursor\\imgaddtext\\xiaoshani\\img", 
+                           output_folder=None, font_name="simkai", font_size=40, 
+                           color="black", outline_color=None, outline_width=0):
+        """
+        自动处理图片，从指定文件夹的0.txt读取段落，随机选择10张图片添加文字
+        
+        参数:
+        - folder_path: 包含0.txt文件的文件夹路径
+        - img_source_folder: 图片源文件夹路径
+        - output_folder: 输出文件夹路径（可选）
+        - font_name: 字体名称
+        - font_size: 字体大小
+        - color: 文字颜色
+        - outline_color: 描边颜色
+        - outline_width: 描边宽度
+        """
+        
+        # 检查0.txt文件是否存在
+        text_file_path = os.path.join(folder_path, "0.txt")
+        if not os.path.exists(text_file_path):
+            print(f"❌ 0.txt文件不存在: {text_file_path}")
+            return 0
+        
+        # 检查图片源文件夹是否存在
+        if not os.path.exists(img_source_folder):
+            print(f"❌ 图片源文件夹不存在: {img_source_folder}")
+            return 0
+        
+        # 解析文本段落
+        paragraphs = self.parse_text_paragraphs(text_file_path)
+        if not paragraphs:
+            print("❌ 没有找到有效的文本段落")
+            return 0
+        
+        # 获取图片源文件夹中的所有图片文件
+        image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff']
+        all_image_files = []
+        
+        for ext in image_extensions:
+            pattern = os.path.join(img_source_folder, ext)
+            all_image_files.extend(glob.glob(pattern))
+            pattern = os.path.join(img_source_folder, ext.upper())
+            all_image_files.extend(glob.glob(pattern))
+        
+        # 去重
+        all_image_files = list(set(all_image_files))
+        
+        if len(all_image_files) < 10:
+            print(f"❌ 图片源文件夹中只有 {len(all_image_files)} 张图片，需要至少10张")
+            return 0
+        
+        # 随机选择10张图片
+        selected_images = random.sample(all_image_files, 10)
+        print(f"🎲 从 {len(all_image_files)} 张图片中随机选择了10张")
+        
+        # 设置输出文件夹
+        if output_folder is None:
+            output_folder = os.path.join(folder_path, "output")
+        
+        # 创建输出文件夹
+        os.makedirs(output_folder, exist_ok=True)
+        
+        # 处理图片和文本的配对
+        processed_count = 0
+        min_count = min(len(paragraphs), len(selected_images))
+        
+        print(f"\n🔄 开始自动处理，将处理 {min_count} 张图片...")
+        
+        for i in range(min_count):
+            image_path = selected_images[i]
+            text_content = paragraphs[i]
+            
+            # 生成输出文件名
+            image_name = os.path.splitext(os.path.basename(image_path))[0]
+            output_path = os.path.join(output_folder, f"{image_name}_text.jpg")
+            
+            print(f"\n📝 处理第 {i+1} 张图片: {os.path.basename(image_path)}")
+            print(f"   文本内容: {text_content[:30]}..." if len(text_content) > 30 else f"   文本内容: {text_content}")
+            
+            # 添加文字到图片（不传递position和font_size，让方法内部解析）
+            result = self.add_text_to_image(
+                image_path=image_path,
+                text=text_content,
+                output_path=output_path,
+                font_name=font_name,
+                font_size=font_size,
+                color=color,
+                position=None,  # 让方法内部从文件名解析
+                outline_color=outline_color,
+                outline_width=outline_width
+            )
+            
+            if result:
+                processed_count += 1
+                print(f"   ✅ 保存到: {output_path}")
+            else:
+                print(f"   ❌ 处理失败")
+        
+        print(f"\n🎉 自动处理完成！成功处理 {processed_count} 张图片")
+        print(f"📁 输出文件夹: {output_folder}")
+        
+        # 显示剩余内容统计
+        if len(paragraphs) > len(selected_images):
+            print(f"⚠️  还有 {len(paragraphs) - len(selected_images)} 个文本段落没有处理")
+        elif len(selected_images) > len(paragraphs):
+            print(f"⚠️  还有 {len(selected_images) - len(paragraphs)} 张图片没有使用")
+        
+        return processed_count
 
 def main():
     parser = argparse.ArgumentParser(description="给图片添加文字的工具")
@@ -516,7 +718,7 @@ def main():
     parser.add_argument("-f", "--font", default="slidexiaxing", help="字体名称")
     parser.add_argument("-s", "--size", type=int, default=40, help="字体大小")
     parser.add_argument("-c", "--color", default="black", help="文字颜色")
-    parser.add_argument("-p", "--position", default="top-left", help="文字位置")
+    parser.add_argument("-p", "--position", default=None, help="文字位置")
     parser.add_argument("--outline-color", help="描边颜色")
     parser.add_argument("--outline-width", type=int, default=0, help="描边宽度")
     parser.add_argument("--list-fonts", action="store_true", help="列出可用字体")
@@ -528,6 +730,10 @@ def main():
     parser.add_argument("--folder", help="图片文件夹路径（批量处理时使用）")
     parser.add_argument("--text-file", help="文本文件路径（批量处理时使用）")
     parser.add_argument("--output-folder", help="输出文件夹路径（批量处理时使用）")
+    
+    # 自动处理参数
+    parser.add_argument("--auto", help="自动处理模式，从指定文件夹的0.txt读取段落，随机选择10张图片")
+    parser.add_argument("--img-source", default="D:\\cursor\\imgaddtext\\xiaoshani\\img", help="图片源文件夹路径（自动处理时使用）")
     
     args = parser.parse_args()
     
@@ -575,6 +781,28 @@ def main():
         
         if result:
             print(f"\n🎉 批量处理成功完成！共处理 {result} 张图片")
+        return
+    
+    # 自动处理模式
+    if args.auto:
+        if not os.path.exists(args.auto):
+            print(f"❌ 文件夹不存在: {args.auto}")
+            return
+        
+        # 执行自动处理
+        result = adder.auto_process_images(
+            folder_path=args.auto,
+            img_source_folder=args.img_source,
+            output_folder=args.output_folder,
+            font_name=args.font,
+            font_size=args.size,
+            color=args.color,
+            outline_color=args.outline_color,
+            outline_width=args.outline_width
+        )
+        
+        if result:
+            print(f"\n🎉 自动处理成功完成！共处理 {result} 张图片")
         return
     
     # 检查是否提供了必需参数

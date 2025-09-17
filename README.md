@@ -77,6 +77,24 @@ python 使用示例.py
 - `center,200` - 水平居中，垂直坐标200
 - `center,center` 或 `vcenter` - 完全居中
 
+### 文件名自动解析位置和字体大小
+如果不指定 `-p` 参数，脚本会自动尝试从图片文件名解析位置和字体大小：
+- 文件名格式：`顺序-x坐标x y坐标-字体大小.jpg`
+- 示例：`1-200x300.jpg` → 位置 (200, 300)，使用默认字体大小
+- 示例：`1-200xvcenter-120.jpg` → 位置 (200, vcenter)，字体大小 120
+- 示例：`2-100xcenter-80.jpg` → 位置 (100, center)，字体大小 80
+- 支持的坐标格式：数字、`center`、`vcenter`
+- **位置说明**：所有位置都是文字区域**顶部**距离图片顶部的距离
+- **居中说明**：`center`/`vcenter` 表示整个文字区域在图片垂直中心
+- 如果文件名不符合格式，使用默认位置 `top-left` 和默认字体大小
+
+### 批量处理排序
+批量处理时，图片按照文件名用 `-` 分割后的第一个数值进行排序：
+- `1-200x300.jpg` → 排序值：1
+- `10-100xcenter.jpg` → 排序值：10
+- `2-200x300.jpg` → 排序值：2
+- 排序结果：1, 2, 10...
+
 ## 🔤 字体支持
 
 ### 系统字体
@@ -120,6 +138,18 @@ python imgaddtext.py photo.jpg -t "垂直居中" -p "100,vcenter"
 
 # 水平居中，垂直坐标200
 python imgaddtext.py photo.jpg -t "水平居中" -p "center,200"
+
+# 文件名自动解析位置（不需要-p参数）
+python imgaddtext.py 1-200x300.jpg -t "自动解析位置"
+
+# 文件名自动解析位置和字体大小
+python imgaddtext.py 1-200xvcenter-120.jpg -t "自动解析位置和字体大小"
+
+# 测试垂直距离：文字区域top距离图片顶部200像素
+python imgaddtext.py 1-100x200-80.jpg -t "垂直距离测试"
+
+# 批量处理，自动解析每张图片的位置和字体大小，按数值排序
+python imgaddtext.py --batch --folder ./images --text-file ./text.txt
 
 # 查看可用选项
 python imgaddtext.py --list-fonts
