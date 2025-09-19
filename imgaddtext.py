@@ -459,6 +459,11 @@ class ImageTextAdder:
             with open(text_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
+            # 过滤以#开头的行（忽略前导空白）
+            content_lines = content.splitlines()
+            content_lines = [line for line in content_lines if not line.lstrip().startswith('#')]
+            content = '\n'.join(content_lines)
+            
             # 按连续两个换行符分割段落
             paragraphs = re.split(r'\n\s*\n', content)
             
