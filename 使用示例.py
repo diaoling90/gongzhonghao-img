@@ -205,7 +205,7 @@ if __name__ == "__main__":
 
 #  python imgaddtext.py --batch --folder ./xiaoshani/20250917-1 --text-file ./xiaoshani/20250917-1/0.txt -f bbhbold -s 180 -c black
 
-# python imgaddtext.py --auto ./xiaoshani/20250918 -f bbhbold -s 180 -c black 
+# python3 imgaddtext.py --auto ./xiaoshani/20250918-1 -f bbhbold -s 180 -c black 
 
 # python phone_manager.py transfer ./xiaoshani/20250917-1/output/
 
