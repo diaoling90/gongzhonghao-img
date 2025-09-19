@@ -459,6 +459,11 @@ class ImageTextAdder:
             with open(text_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
+            # 过滤以#开头的行（忽略前导空白）
+            content_lines = content.splitlines()
+            content_lines = [line for line in content_lines if not line.lstrip().startswith('#')]
+            content = '\n'.join(content_lines)
+            
             # 按连续两个换行符分割段落
             paragraphs = re.split(r'\n\s*\n', content)
             
@@ -605,7 +610,7 @@ class ImageTextAdder:
                            output_folder=None, font_name="simkai", font_size=40, 
                            color="black", outline_color=None, outline_width=0):
         """
-        自动处理图片，从指定文件夹的0.txt读取段落，随机选择10张图片添加文字
+        自动处理图片，从指定文件夹的0.txt读取段落，随机选择对应数量的图片添加文字
         
         参数:
         - folder_path: 包含0.txt文件的文件夹路径
@@ -648,13 +653,20 @@ class ImageTextAdder:
         # 去重
         all_image_files = list(set(all_image_files))
         
-        if len(all_image_files) < 10:
-            print(f"❌ 图片源文件夹中只有 {len(all_image_files)} 张图片，需要至少10张")
+        # 根据段落数量选择图片数量
+        needed_images = min(len(paragraphs), len(all_image_files))
+        
+        if needed_images == 0:
+            print("❌ 没有段落或图片可供处理")
             return 0
         
-        # 随机选择10张图片
-        selected_images = random.sample(all_image_files, 10)
-        print(f"🎲 从 {len(all_image_files)} 张图片中随机选择了10张")
+        if len(all_image_files) < needed_images:
+            print(f"❌ 图片源文件夹中只有 {len(all_image_files)} 张图片，需要 {needed_images} 张")
+            return 0
+        
+        # 随机选择需要的图片数量
+        selected_images = random.sample(all_image_files, needed_images)
+        print(f"🎲 从 {len(all_image_files)} 张图片中随机选择了 {needed_images} 张")
         
         # 设置输出文件夹
         if output_folder is None:
@@ -733,7 +745,7 @@ def main():
     parser.add_argument("--output-folder", help="输出文件夹路径（批量处理时使用）")
     
     # 自动处理参数
-    parser.add_argument("--auto", help="自动处理模式，从指定文件夹的0.txt读取段落，随机选择10张图片")
+    parser.add_argument("--auto", help="自动处理模式，从指定文件夹的0.txt读取段落，随机选择对应数量的图片")
 
     parser.add_argument("--img-source", default="./xiaoshani/img", help="图片源文件夹路径（自动处理时使用）")
     
